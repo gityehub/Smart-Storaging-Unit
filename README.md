@@ -1,0 +1,2 @@
+# Varastointilaitteisto
+Opinnäytetyö pneumaattisesti toimivalla nostimella sekä hihnalla toimivalla ovaalikuljettimella
