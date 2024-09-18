@@ -1,0 +1,193 @@
+FUNCTION_BLOCK FB_Motion
+VAR
+	AxisPower: MC_Power;
+	AxisMoveabsolute: MC_MoveAbsolute;
+	AxisHome: MC_Home;
+	bHomeExec: BOOL;
+	bMoveExec: BOOL;
+	MoveToHome: LREAL;
+	rVelocity: LREAL := 40;
+	rAcceleration: LREAL := 20;
+	rDeceleration: LREAL := 20;
+	rJerk: LREAL := 20;
+	HomeOptions: ST_HomingOptions;
+	MoveOptions: ST_MoveOptions;
+	PowerOptions: ST_PowerOptions;
+	PowerBufferMode: MC_BufferMode;
+	HomingMode: MC_HomingMode;
+	HomeBufferMode: MC_BufferMode;
+	MoveBufferMove: MC_BufferMode;
+	MoveBufferMode: MC_BufferMode;
+	nDistanceToTarget: INT;
+	rDistanceToTarget: LREAL;
+END_VAR
+VAR_OUTPUT
+	bPowerStatus: BOOL;
+END_VAR
+VAR
+	AxisJog: MC_Jog;
+	bJogForward: BOOL;
+	bJogBackward: BOOL;
+	JogMode: E_JogMode := E_JOGMODE.MC_JOGMODE_CONTINOUS;
+	rJogVelocity: LREAL := 5;
+	rJogAcceleration: LREAL := 5;
+	rJogDeceleration: LREAL := 50;
+	rJogJerk: LREAL := 50;
+	rJogMoveToPos: LREAL;
+	rMoveToPos: LREAL;
+	eHomeState: E_HomeState;
+	bHomeCmd: BOOL;
+	tonHomeDelay: TON := (PT := TIME#4s0ms);
+	fbSetPosition: MC_SetPosition;
+	bSetPosition: BOOL;
+	rSetPosition: LREAL := -20;
+	SetPos: ST_McOutputs;
+END_VAR
+VAR_INPUT
+	bHomeCalibrationCam: BOOL;
+END_VAR
+VAR
+	bPowerEnable: BOOL := TRUE;
+END_VAR
+VAR_IN_OUT
+	AxisRef: AXIS_REF;
+END_VAR
+VAR
+	MoveOut: ST_McOutputs;
+	HomeOut: ST_McOutputs;
+	PowerOut: ST_McOutputs;
+	JogOut: ST_McOutputs;
+END_VAR
+
+VAR_OUTPUT
+	bHomed: BOOL;
+	bP2P_Ready: BOOL;
+END_VAR
+
+
+
+//////
+
+
+
+AxisPower(
+	Axis:= AxisRef, 
+	Enable:= bPowerEnable, 
+	Enable_Positive:= TRUE, 
+	Enable_Negative:= TRUE, 
+	Override:= 100.0, 
+	BufferMode:= PowerBufferMode, 
+	Options:= PowerOptions, 
+	Status=> bPowerStatus, 		
+	Busy=> PowerOut.Busy,        
+	Active=> PowerOut.Active,      
+	Error=> PowerOut.Error,       
+	ErrorID=> PowerOut.ErrorID);    
+
+(*	
+AxisHome(
+	Axis:= AxisRef, 
+	Execute:= bHomeExec, 
+	Position:= MoveToHome, 
+	HomingMode:= HomingMode, 
+	BufferMode:= HomeBufferMode, 
+	Options:= HomeOptions, 
+	bCalibrationCam:= bHomeCalibrationCam, 
+	Done=> 				HomeOut.Done, 
+	Busy=> 				HomeOut.Busy, 
+	Active=> 			HomeOut.Active, 
+	CommandAborted=> 	HomeOut.CommandAborted, 
+	Error=> 			HomeOut.Error, 
+	ErrorID=> 			HomeOut.ErrorID);
+	*)
+	
+AxisMoveabsolute(
+	Axis:= AxisRef, 
+	Execute:= bMoveExec, 
+	Position:= rMoveToPos, 
+	Velocity:= rVelocity, 
+	Acceleration:= rAcceleration, 
+	Deceleration:= rDeceleration, 
+	Jerk:= rJerk, 
+	BufferMode:= MoveBufferMode, 
+	Options:= MoveOptions, 
+	Done=> 				MoveOut.Done, 
+	Busy=> 				MoveOut.Busy, 
+	Active=> 			MoveOut.Active, 
+	CommandAborted=> 	MoveOut.CommandAborted, 
+	Error=> 			MoveOut.Error, 
+	ErrorID=> 			MoveOut.ErrorID);
+	
+bMoveExec := FALSE;
+
+AxisJog(
+	Axis:= AxisRef , 
+	JogForward:= bJogForward, 
+	JogBackwards:= bJogBackward, 
+	Mode:= JogMode, 
+	Position:= rJogMoveToPos, 
+	Velocity:= rJogVelocity, 
+	Acceleration:= rJogAcceleration, 
+	Deceleration:= rJogDeceleration, 
+	Jerk:= rJogJerk, 
+	Done=> JogOut.Done, 
+	Busy=> JogOut.Busy, 
+	Active=> JogOut.Active, 
+	CommandAborted=> JogOut.CommandAborted, 
+	Error=> JogOut.Error, 
+	ErrorID=> JogOut.ErrorID);
+
+fbSetPosition(
+	Axis:= AxisRef, 
+	Execute:= bSetPosition, 
+	Position:= rSetPosition, 
+	Mode:= FALSE, 
+	Options:= , 
+	Done=> SetPos.Done, 
+	Busy=> SetPos.Busy, 
+	Error=> SetPos.Error, 
+	ErrorID=> SetPos.ErrorID);
+
+tonHomeDelay(IN:= eHomeState = E_HomeState.Delay);	
+bHomed := FALSE;
+
+CASE eHomeState OF
+	E_HomeState.Inactive:
+		 IF bHomeCmd THEN
+			 eHomeState := E_HomeState.Jog;
+		 END_IF
+	
+	E_HomeState.Jog:
+		bJogBackward:=TRUE;
+		IF bHomeCalibrationCam THEN
+			bJogBackward:=FALSE;
+			eHomeState := E_HomeState.Delay;
+		END_IF
+	
+	E_HomeState.Delay:
+		 IF tonHomeDelay.Q THEN
+			 eHomeState := E_HomeState.SetPos;
+		 END_IF		
+	
+	E_HomeState.SetPos:
+		bSetPosition := TRUE;
+		IF SetPos.Done THEN
+			bSetPosition := FALSE;
+			eHomeState := E_HomeState.P2P;
+		END_IF	
+	
+	E_HomeState.P2P:
+		P2P(0);
+		IF MoveOut.Done THEN
+			eHomeState := E_HomeState.HomedReady;
+		END_IF
+	
+	E_HomeState.HomedReady:
+		bHomed := TRUE;
+			
+END_CASE
+
+ bHomeCmd := FALSE;
+ 
+ rDistanceToTarget := ABS(AxisRef.NcToPlc.ActPos - rMoveToPos);
+ bP2P_Ready := rDistanceToTarget < 0.1 AND bHomed;
