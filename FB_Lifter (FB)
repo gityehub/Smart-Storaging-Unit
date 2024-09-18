@@ -1,0 +1,110 @@
+FUNCTION_BLOCK FB_Lifter
+VAR_OUTPUT
+	bLifter: BOOL;
+	bGripperCtrl: BOOL;
+END_VAR
+VAR
+	DelayStart: BOOL;
+	tonGripperDelay: TON := (PT := TIME#1s0ms);
+	LifterState: E_LifterState;
+	PickCmd: BOOL;
+	bItemGripped: BOOL;
+	PlaceCmd: BOOL;
+END_VAR
+VAR_OUTPUT
+	Ready: BOOL;
+END_VAR
+
+
+
+////
+
+
+
+tonGripperDelay(IN := DelayStart);
+
+
+CASE LifterState OF
+	
+	E_LifterState.NoItem:
+		Ready := TRUE;
+		IF PickCmd = TRUE THEN
+			LifterState := E_LifterState.Pick_Down;
+			Ready := FALSE;
+		END_IF
+	
+	E_LifterState.Pick_Down:
+		Ready := FALSE;
+		bLifter := TRUE;
+		tonGripperDelay.PT := T#1S;
+		DelayStart := TRUE;
+		IF tonGripperDelay.Q THEN
+			DelayStart := FALSE;
+			LifterState := E_LifterState.Pick_Grip;
+		END_IF
+	
+	E_LifterState.Pick_Grip:
+		bGripperCtrl := TRUE;
+		bLifter := TRUE;
+		tonGripperDelay.PT := T#2S;
+		DelayStart := TRUE;
+		IF tonGripperDelay.Q THEN
+			DelayStart := FALSE;
+			LifterState := E_LifterState.Pick_Up;
+		END_IF
+	
+	E_LifterState.Pick_Up:
+		bLifter := FALSE;
+		tonGripperDelay.PT := T#2S;
+		DelayStart := TRUE;
+		IF tonGripperDelay.Q THEN
+			DelayStart := FALSE;
+			LifterState := E_LifterState.ItemOn;
+		END_IF	
+	
+	/////////////////////
+	
+	E_LifterState.ItemOn:
+		Ready := TRUE;
+		bItemGripped :=TRUE;
+		IF PlaceCmd = TRUE THEN
+			Ready := FALSE;
+			LifterState := E_LifterState.Place_Down;
+		END_IF
+	
+	/////////////////////////
+	
+	
+	E_LifterState.Place_Down:
+		Ready := FALSE;
+		bLifter := TRUE;
+		tonGripperDelay.PT := T#1S;
+		DelayStart := TRUE;
+		IF tonGripperDelay.Q THEN
+			DelayStart := FALSE;
+			LifterState := E_LifterState.Place_Release;
+		END_IF
+	
+	E_LifterState.Place_Release:
+		bGripperCtrl := FALSE;
+		bLifter := TRUE;
+		tonGripperDelay.PT := T#2S;
+		DelayStart := TRUE;
+		IF tonGripperDelay.Q THEN
+			DelayStart := FALSE;
+			LifterState := E_LifterState.Place_Up;
+		END_IF
+	
+	E_LifterState.Place_Up:
+		bLifter := FALSE;
+		tonGripperDelay.PT := T#2S;
+		DelayStart := TRUE;
+		IF tonGripperDelay.Q THEN
+			DelayStart := FALSE;
+			LifterState := E_LifterState.NoItem;
+		END_IF	
+	
+END_CASE
+
+PlaceCmd := FALSE;
+PickCmd := FALSE;
