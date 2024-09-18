@@ -1,0 +1,10 @@
+METHOD PowerOn : BOOL
+VAR_INPUT
+END_VAR
+
+
+
+////
+
+
+bPowerEnable := TRUE;
