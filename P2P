@@ -1,0 +1,18 @@
+METHOD P2P : BOOL
+VAR_INPUT
+	TargetPos: LREAL;
+END_VAR
+
+
+
+////
+
+
+
+IF bPowerStatus THEN
+	rMoveToPos := TargetPos;
+	bMoveExec := TRUE;
+	P2P := TRUE;
+ELSE
+	P2P := FALSE;
+END_IF
