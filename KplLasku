@@ -1,0 +1,10 @@
+METHOD KplLasku : BOOL
+VAR_INPUT
+END_VAR
+
+
+////
+
+
+
+PlaceCmd := TRUE;
