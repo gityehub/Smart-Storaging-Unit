@@ -1,0 +1,8 @@
+METHOD KplNosto : BOOL
+
+
+
+/////
+
+
+PickCmd := TRUE;
