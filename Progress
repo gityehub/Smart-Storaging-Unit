@@ -1,0 +1,11 @@
+18.9
+General:
+- Contact issue appeared with X axis, causing jittering of the servo. Fixable temporarily by moving the servo wires connecting to io.
+- Messed with the program in run mode to learn how everything works
+- Got the conveyor belt working to one direction by shorting the cicruit with KM relay.
+- Somewhat figured out what inputs go to PLC and which aren't connected.
+Todo:
+- Redo X axis servo connections to fix random jittering
+- Rewire sensors inputs directly to PLC IO
+- Figure out how conveyor belt can be used to both directions
+- Rewire conveyor belt to PLC IO
