@@ -1,0 +1,17 @@
+//Main starts Motion and Mqtt programs
+PROGRAM MAIN
+VAR
+END_VAR
+
+
+
+
+////////
+
+Motion();
+
+PrgMqttCom();
+
+
+
+
