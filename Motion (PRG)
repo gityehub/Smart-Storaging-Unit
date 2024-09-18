@@ -1,0 +1,155 @@
+PROGRAM Motion
+
+VAR
+	X: FB_Motion;
+	Y: FB_Motion;  
+	AxisRefX: AXIS_REF;
+	AxisRefY: AXIS_REF;
+	ManualMove: BOOL;
+	rTarget_Y: LREAL;
+	rTarget_X: LREAL;
+	PowerOffStop: BOOL;
+	PowerOn: BOOL;
+	FindHome: BOOL;
+	ManualSlotMove: BOOL;
+	SlotVariable: INT;
+	fbLifter: FB_Lifter;
+	PickCmd: BOOL;
+	PlaceCmd: BOOL;
+	eMode: E_Mode := E_MODE.auto;
+	eState: E_State;
+	AutoInit: BOOL := TRUE;
+	eMarathon: E_Marathon;
+END_VAR
+
+
+
+/////
+
+
+
+//X-akseli
+X(AxisRef:= AxisRefX, bHomeCalibrationCam:=NOT(IO.bRA2S));
+
+//Y-akseli
+Y(AxisRef:= AxisRefY, bHomeCalibrationCam:=NOT(IO.bRA1S));
+
+fbLifter();
+IO.bLifter := fbLifter.bLifter;
+IO.bGripper := fbLifter.bGripperCtrl;
+
+CASE eMode OF
+	E_Mode.manual:		
+		IF ManualMove THEN
+			Y.P2P(rTarget_Y);
+			X.P2P(rTarget_X);
+			ManualMove := FALSE;
+		END_IF
+		
+		IF ManualSlotMove THEN
+			Y.P2P(Slots.Coords[SlotVariable].y);
+			X.P2P(Slots.Coords[SlotVariable].x);
+			ManualSlotMove := FALSE;
+		END_IF
+		
+		IF PowerOffStop THEN
+			X.PowerOff();
+			Y.PowerOff();
+			PowerOffStop := FALSE;
+		END_IF
+		
+		IF PowerOn THEN
+			X.PowerOn();
+			Y.PowerOn();
+			PowerOn := FALSE;
+		END_IF
+		
+		IF FindHome THEN
+			X.FindHome();
+			Y.FindHome();
+			FindHome := FALSE;
+		END_IF
+		
+		IF PickCmd THEN
+			fbLifter.KplNosto();
+			PickCmd := FALSE;
+		END_IF
+		
+		IF PlaceCmd THEN
+			fbLifter.KplLasku();
+			PlaceCmd := FALSE;
+		END_IF
+	
+	E_Mode.marathon:  // NOT IN USE. Needs new structure.
+	
+		eMode := E_Mode.manual;
+		
+		CASE eMarathon OF
+			E_Marathon.idle:
+				;
+				
+			E_Marathon.next_cycle:
+				;
+				
+			E_Marathon.in_cycle:
+				;
+				
+		END_CASE
+		
+	E_Mode.auto:
+		CASE eState OF
+			E_State.inactive:
+				IF AutoInit THEN
+					AutoInit:= FALSE;
+					X.PowerOn();
+					Y.PowerOn();
+					eState := E_state.initialising;
+				END_IF
+	
+			E_State.initialising:
+				IF X.bPowerStatus AND Y.bPowerStatus THEN
+					X.FindHome();
+					Y.FindHome();
+					eState := E_state.homing;
+				END_IF
+			
+			E_State.homing:
+				IF X.bHomed AND Y.bHomed THEN
+					eState := E_state.ready;
+				END_IF
+				
+			E_State.ready:
+				IF Comms.bSlotCmd THEN
+					Comms.bSlotCmd := FALSE;
+					X.P2P(Slots.Coords[Comms.stSlotCmd.from_slot].x);
+					Y.P2P(Slots.Coords[Comms.stSlotCmd.from_slot].y);
+					eState := E_state.move2pick;
+
+				END_IF
+				
+			E_State.move2pick:
+				IF X.bP2P_Ready AND Y.bP2P_Ready THEN
+					fbLifter.KplNosto();
+					eState := E_state.pick;
+				END_IF
+				
+			E_State.pick:
+				IF fbLifter.Ready THEN
+					X.P2P(Slots.Coords[Comms.stSlotCmd.to_slot].x);
+					Y.P2P(Slots.Coords[Comms.stSlotCmd.to_slot].y);
+					eState := E_state.move2place;
+				END_IF
+			
+			E_State.move2place:
+				IF X.bP2P_Ready AND Y.bP2P_Ready THEN
+					fbLifter.KplLasku();
+					eState := E_state.place;
+				END_IF
+				
+			E_State.place:
+				IF fbLifter.Ready THEN
+					eState := E_state.ready;
+				END_IF;
+
+		END_CASE
+END_CASE
