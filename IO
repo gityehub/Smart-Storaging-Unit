@@ -1,0 +1,6 @@
+VAR_GLOBAL
+	bRA1S AT %I*: BOOL;
+	bRA2S AT %I*: BOOL;
+	bLifter AT %Q*: BOOL;
+	bGripper AT %Q*: BOOL;
+END_VAR
