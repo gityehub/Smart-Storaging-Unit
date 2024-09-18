@@ -1,0 +1,16 @@
+METHOD FindHome : BOOL
+VAR_INPUT
+END_VAR
+
+
+
+/////
+
+
+
+IF eHomeState = E_HomeState.Inactive THEN
+	bHomeCmd := TRUE;
+	FindHome := TRUE;
+ELSE
+	FindHome := FALSE;
+END_IF
